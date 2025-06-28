@@ -9,9 +9,11 @@ import tensorflow as tf
 from keras import Model
 from keras.layers import Input, Dense, Dropout
 from keras.layers import LSTM
+import joblib
 
 
-df = pd.read_csv('dataset\\gp.csv')
+
+df = pd.read_csv('gp.csv')
 df.info()
 df.drop(['Vol.', 'Change %'], axis=1, inplace=True)
 df['Date'] = pd.to_datetime(df['Date'])
@@ -105,3 +107,7 @@ y_test_pred = scaler.inverse_transform(y_pred)
 
 # Save the full model
 model.save('gold_price_model.h5')
+
+scaler = MinMaxScaler()
+scaler.fit(df['Price'].values.reshape(-1, 1))
+joblib.dump(scaler, 'scaler.save') 

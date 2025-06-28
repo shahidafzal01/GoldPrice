@@ -1,103 +1,123 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import { Loader2, TrendingUp } from 'lucide-react';
+
+async function Last60(): Promise<number[]> {
+  const res = await fetch('http://localhost:3001/history');
+  if (!res.ok) throw new Error('Failed to fetch from local gold history');
+  const data = await res.json();
+  return data.prices;
+}
+
+async function fetchUSDtoINR(): Promise<number> {
+  const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=INR');
+  const data = await res.json();
+  return data.rates.INR;
+}
+
+export default function PredictionPage() {
+  const [usdPrediction, setUsdPrediction] = useState<number | null>(null);
+  const [inrPerGram, setInrPerGram] = useState<number | null>(null);
+  const [inrPer10Gram, setInrPer10Gram] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function predict() {
+    try {
+      setLoading(true);
+      setError(null);
+      const prices = await Last60();
+
+      const res = await fetch('http://localhost:3001/predictN', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: prices, days: 1 }),
+      });
+
+      if (!res.ok) throw new Error('Failed to get prediction');
+
+      const data = await res.json();
+      const usd = data.predictions[0];
+      const usdToInr = await fetchUSDtoINR();
+      const inrGram = (usd * usdToInr) / 31.1035;
+
+      setUsdPrediction(usd);
+      setInrPerGram(inrGram);
+      setInrPer10Gram(inrGram * 10);
+    } catch (err: any) {
+      setError(err.message);
+      setUsdPrediction(null);
+      setInrPerGram(null);
+      setInrPer10Gram(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Clear function to reset all states
+  function clear() {
+    setUsdPrediction(null);
+    setInrPerGram(null);
+    setInrPer10Gram(null);
+    setError(null);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    predict();
+  }, []);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-50 to-yellow-100 p-6">
+      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center space-y-4 border border-yellow-300">
+        <div className="flex items-center justify-center gap-2 text-yellow-700">
+          <TrendingUp className="w-6 h-6" />
+          <h1 className="text-2xl font-semibold">Gold Price Prediction</h1>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        {loading ? (
+          <div className="text-yellow-600 flex justify-center items-center gap-2">
+            <Loader2 className="animate-spin h-5 w-5" />
+            <span>Loading prediction...</span>
+          </div>
+        ) : error ? (
+          <p className="text-red-600 font-medium">❌ {error}</p>
+        ) : usdPrediction !== null ? (
+          <div className="text-black space-y-2">
+            <p>
+              <strong>💵 USD/oz:</strong> ${usdPrediction.toFixed(2)}
+            </p>
+            <p>
+              <strong>🇮🇳 INR/g:</strong> ₹{inrPerGram?.toFixed(2)}
+            </p>
+            <p>
+              <strong>🇮🇳 INR/10g:</strong> ₹{inrPer10Gram?.toFixed(2)}
+            </p>
+          </div>
+        ) : (
+          <p className="text-gray-600">No prediction yet.</p>
+        )}
+
+        <div className="flex justify-center gap-4 mt-4">
+          <button
+            onClick={predict}
+            disabled={loading}
+            className="px-6 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50"
+          >
+            Predict Again
+          </button>
+
+          <button
+            onClick={clear}
+            disabled={loading}
+            className="px-6 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 disabled:opacity-50"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+    </main>
   );
 }
+
